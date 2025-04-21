@@ -1,22 +1,27 @@
 package eu.inias.demooperator.services;
 
-import org.junit.jupiter.api.BeforeEach;
+import eu.inias.demooperator.model.cloudflare.CloudflareApiRecord;
+import eu.inias.demooperator.model.cloudflare.CloudflareApiZone;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.TestPropertySource;
+
+import java.util.Optional;
 
 @SpringBootTest
-@TestPropertySource(properties = {
-        "cloudflare.api.bearer="
-})
 class CloudflareServiceTest {
     @Autowired
-    CloudflareService cloudFlareService;
+    CloudflareServiceFactory cloudflareServiceFactory;
 
     @Test
     void realApiTest() {
-        String toot = cloudFlareService.getZoneId();
+        CloudflareService cloudflareService = cloudflareServiceFactory.create("uulLpdTk978J16a2i0uV-cTQV_V-K1YlhmvpxHza");
+        CloudflareApiZone zone = cloudflareService.getZone("inias.eu");
+//        String ip = restClient.get()
+//                .uri("https://icanhazip.com")
+//                .retrieve()
+//                .body(String.class);
+        Optional<CloudflareApiRecord> aRecord = cloudflareService.getDnsRecord(zone.id(), "ha.inias.eu");
         System.out.println();
     }
 }
