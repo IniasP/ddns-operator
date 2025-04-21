@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: DemoOperator
+
+cloudflare:
+  api:
+    base-url: https://api.cloudflare.com/client/v4
+    bearer: ${CLOUDFLARE_BEARER}
