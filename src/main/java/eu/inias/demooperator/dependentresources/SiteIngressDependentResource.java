@@ -2,10 +2,7 @@ package eu.inias.demooperator.dependentresources;
 
 import eu.inias.demooperator.crds.CloudflareRecordCustomResource;
 import eu.inias.demooperator.crds.SiteCustomResource;
-import io.fabric8.kubernetes.api.model.networking.v1.HTTPIngressPathBuilder;
-import io.fabric8.kubernetes.api.model.networking.v1.Ingress;
-import io.fabric8.kubernetes.api.model.networking.v1.IngressBuilder;
-import io.fabric8.kubernetes.api.model.networking.v1.IngressRuleBuilder;
+import io.fabric8.kubernetes.api.model.networking.v1.*;
 import io.javaoperatorsdk.operator.api.reconciler.Context;
 import io.javaoperatorsdk.operator.processing.dependent.kubernetes.CRUDKubernetesDependentResource;
 
@@ -27,9 +24,17 @@ public class SiteIngressDependentResource
                                 .withName(siteName)
                                 .withNamespace(site.getMetadata().getNamespace())
                                 .withLabels(Map.of("app", siteName))
+                                .withAnnotations(Map.of(
+                                        "cert-manager.io/cluster-issuer", "letsencrypt-prod",
+                                        "kubernetes.io/ingress.class", "nginx"
+                                ))
                                 .endMetadata()
                                 .withNewSpec()
                                 .withIngressClassName("nginx")
+                                .withTls(new IngressTLSBuilder()
+                                        .withHosts(cloudflareRecord.getStatus().host())
+                                        .withSecretName(siteName + "-tls")
+                                        .build())
                                 .withRules(new IngressRuleBuilder()
                                         .withHost(cloudflareRecord.getStatus().host())
                                         .withNewHttp()
