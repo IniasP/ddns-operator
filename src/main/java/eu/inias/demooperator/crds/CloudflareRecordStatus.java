@@ -4,8 +4,9 @@ import java.time.Instant;
 
 public record CloudflareRecordStatus(
         Long observedGeneration,
-        Boolean ready,
+        String id,
         String lastSyncedIp,
-        Instant lastUpdateTime
-) implements Status {
+        Instant lastUpdateTime,
+        String host
+) {
 }

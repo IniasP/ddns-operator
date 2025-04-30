@@ -1,14 +1,13 @@
 package eu.inias.demooperator.reconcilers;
 
-import eu.inias.demooperator.crds.CloudflareRecord;
+import eu.inias.demooperator.crds.CloudflareRecordCustomResource;
 import eu.inias.demooperator.crds.CloudflareRecordStatus;
-import eu.inias.demooperator.crds.CloudflareZone;
-import eu.inias.demooperator.crds.SecretReference;
+import eu.inias.demooperator.crds.CloudflareZoneCustomResource;
 import eu.inias.demooperator.model.cloudflare.CloudflareApiRecord;
 import eu.inias.demooperator.services.CloudflareService;
 import eu.inias.demooperator.services.CloudflareServiceFactory;
+import eu.inias.demooperator.services.KubernetesService;
 import eu.inias.demooperator.services.PublicIpService;
-import io.fabric8.kubernetes.client.KubernetesClient;
 import io.javaoperatorsdk.operator.api.config.informer.InformerEventSourceConfiguration;
 import io.javaoperatorsdk.operator.api.reconciler.*;
 import io.javaoperatorsdk.operator.processing.event.ResourceID;
@@ -21,20 +20,18 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
-import java.util.Base64;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 @Component
 @ControllerConfiguration(
         // run frequently, because this also functions as a DDNS service
         maxReconciliationInterval = @MaxReconciliationInterval(interval = 5, timeUnit = TimeUnit.MINUTES)
 )
-public class CloudflareRecordReconciler implements Reconciler<CloudflareRecord>, Cleaner<CloudflareRecord> {
+public class CloudflareRecordReconciler
+        implements Reconciler<CloudflareRecordCustomResource>, Cleaner<CloudflareRecordCustomResource> {
     private static final Logger LOGGER = LoggerFactory.getLogger(CloudflareRecordReconciler.class);
 
     private final PublicIpService publicIpService;
@@ -49,101 +46,123 @@ public class CloudflareRecordReconciler implements Reconciler<CloudflareRecord>,
     }
 
     @Override
-    public UpdateControl<CloudflareRecord> reconcile(
-            CloudflareRecord recordResource,
-            Context<CloudflareRecord> context
+    public UpdateControl<CloudflareRecordCustomResource> reconcile(
+            CloudflareRecordCustomResource recordResource,
+            Context<CloudflareRecordCustomResource> context
     ) {
         String publicIp = publicIpService.getPublicIp();
 
-        CloudflareZone zoneResource = getZoneResource(recordResource, context.getClient());
-        CloudflareService cloudflareService = getCloudflareService(zoneResource, context.getClient());
-        String zoneName = zoneResource.getSpec().domain();
-        String zoneId = cloudflareService.getZone(zoneName).id();
-        String recordName = recordResource.getSpec().name() + "." + zoneName;
-        cloudflareService.getDnsRecord(zoneId, recordName)
-                .ifPresentOrElse(existingRecord -> {
-                    if (existingRecord.content().equals(publicIp)) {
-                        LOGGER.info("Ip is correctly set to {} for {}. Nothing to do.", publicIp, recordName);
-                    } else {
-                        cloudflareService.updateDnsRecord(zoneId, existingRecord.updated(publicIp));
-                    }
-                }, () -> {
-                    cloudflareService.createDnsRecord(zoneId, CloudflareApiRecord.newARecord(recordName, publicIp));
-                });
+        KubernetesService kubernetesService = new KubernetesService(context.getClient());
 
-        recordResource.setStatus(getStatus(recordResource, publicIp));
+        CloudflareZoneCustomResource zoneResource = kubernetesService.getZone(recordResource);
+        String zoneId = zoneResource.getStatus().id();
+        if (zoneId == null) {
+            LOGGER.warn(
+                    "Zone id not available yet for Cloudflare zone {}, skipping reconciliation of record {}.",
+                    zoneResource.getMetadata().getName(),
+                    recordResource.getMetadata().getName()
+            );
+            return UpdateControl.noUpdate();
+        }
+
+        CloudflareService cloudflareService = getCloudflareService(kubernetesService, zoneResource);
+
+        String zoneName = cloudflareService.getZoneById(zoneId).name();
+        String host = recordResource.getSpec().name() + "." + zoneName;
+        CloudflareApiRecord cloudflareApiRecord = cloudflareService.getDnsRecordByName(zoneId, host)
+                .map(existingRecord -> updateRecord(existingRecord, zoneId, publicIp, cloudflareService))
+                .orElseGet(() -> createRecord(zoneId, host, publicIp, cloudflareService));
+
+        CloudflareRecordStatus status = new CloudflareRecordStatus(
+                recordResource.getMetadata().getGeneration(),
+                cloudflareApiRecord.id(),
+                publicIp,
+                Instant.now(),
+                host
+        );
+        recordResource.setStatus(status);
         return UpdateControl.patchStatus(recordResource);
     }
 
-    private CloudflareService getCloudflareService(CloudflareZone zoneResource, KubernetesClient client) {
-        return cloudflareServiceFactory.create(getApiToken(zoneResource, client));
-    }
-
-    private static String getApiToken(CloudflareZone zoneResource, KubernetesClient client) {
-        SecretReference apiTokenSecretRef = zoneResource.getSpec().apiTokenSecretRef();
-        return getSecret(apiTokenSecretRef, zoneResource.getMetadata().getNamespace(), client);
-    }
-
-    private static String getSecret(SecretReference secretReference, String namespace, KubernetesClient client) {
-        String secretBase64 = client.secrets()
-                .inNamespace(namespace)
-                .withName(secretReference.name())
-                .require()
-                .getData()
-                .get(secretReference.key());
-        if (secretBase64 == null) {
-            throw new IllegalStateException(
-                    "Key %s is not present in secret %s.".formatted(secretReference.key(), secretReference.name())
-            );
-        }
-        return new String(Base64.getDecoder().decode(secretBase64), UTF_8);
-    }
-
     @Override
-    public DeleteControl cleanup(CloudflareRecord recordResource, Context<CloudflareRecord> context) {
-        CloudflareZone zoneResource = getZoneResource(recordResource, context.getClient());
-        String zoneName = zoneResource.getSpec().domain();
-        CloudflareService cloudflareService = getCloudflareService(zoneResource, context.getClient());
-        String zoneId = cloudflareService.getZone(zoneName).id();
-        cloudflareService.getDnsRecord(zoneId, recordResource.getSpec().name())
+    public DeleteControl cleanup(
+            CloudflareRecordCustomResource recordResource,
+            Context<CloudflareRecordCustomResource> context
+    ) {
+        KubernetesService kubernetesService = new KubernetesService(context.getClient());
+        CloudflareZoneCustomResource zoneResource = kubernetesService.getZone(recordResource);
+        CloudflareService cloudflareService = getCloudflareService(kubernetesService, zoneResource);
+        String zoneId = zoneResource.getStatus().id();
+        cloudflareService.getDnsRecordById(zoneId, recordResource.getStatus().id())
+                .or(() -> {
+                    String recordName = getCloudflareRecordName(recordResource, zoneResource);
+                    return cloudflareService.getDnsRecordByName(zoneId, recordName);
+                })
                 .ifPresent(existingRecord -> cloudflareService.deleteDnsRecord(zoneId, existingRecord.id()));
         return DeleteControl.defaultDelete();
     }
 
+    private static String getCloudflareRecordName(
+            CloudflareRecordCustomResource recordResource,
+            CloudflareZoneCustomResource zoneResource
+    ) {
+        return recordResource.getSpec().name() + "." + zoneResource.getSpec().domain();
+    }
+
     @Override
-    public List<EventSource<?, CloudflareRecord>> prepareEventSources(EventSourceContext<CloudflareRecord> context) {
+    public List<EventSource<?, CloudflareRecordCustomResource>> prepareEventSources(
+            EventSourceContext<CloudflareRecordCustomResource> context
+    ) {
         String indexName = "cloudflare-record-zone";
         context.getPrimaryCache().addIndexer(indexName, p -> List.of(getIndexKey(getZoneResourceId(p))));
-        PrimaryToSecondaryMapper<CloudflareRecord> primaryToSecondary = p -> Set.of(getZoneResourceId(p));
-        SecondaryToPrimaryMapper<CloudflareZone> secondaryToPrimary = s -> context.getPrimaryCache()
+        PrimaryToSecondaryMapper<CloudflareRecordCustomResource> primaryToSecondary = p -> Set.of(getZoneResourceId(p));
+        SecondaryToPrimaryMapper<CloudflareZoneCustomResource> secondaryToPrimary = s -> context.getPrimaryCache()
                 .byIndex(indexName, getIndexKey(ResourceID.fromResource(s)))
                 .stream()
                 .map(ResourceID::fromResource)
                 .collect(Collectors.toSet());
-        InformerEventSourceConfiguration<CloudflareZone> configuration =
-                InformerEventSourceConfiguration.from(CloudflareZone.class, CloudflareRecord.class)
+        InformerEventSourceConfiguration<CloudflareZoneCustomResource> configuration =
+                InformerEventSourceConfiguration.from(
+                                CloudflareZoneCustomResource.class,
+                                CloudflareRecordCustomResource.class
+                        )
                         .withPrimaryToSecondaryMapper(primaryToSecondary)
                         .withSecondaryToPrimaryMapper(secondaryToPrimary)
                         .build();
         return List.of(new InformerEventSource<>(configuration, context));
     }
 
-    private static CloudflareZone getZoneResource(CloudflareRecord recordResource, KubernetesClient client) {
-        return client.resources(CloudflareZone.class)
-                .withName(recordResource.getSpec().zoneRef())
-                .require();
+    private CloudflareService getCloudflareService(
+            KubernetesService kubernetesService,
+            CloudflareZoneCustomResource zoneResource
+    ) {
+        String apiToken = kubernetesService.getApiToken(zoneResource);
+        return cloudflareServiceFactory.create(apiToken);
     }
 
-    private static CloudflareRecordStatus getStatus(CloudflareRecord recordResource, String publicIp) {
-        return new CloudflareRecordStatus(
-                recordResource.getMetadata().getGeneration(),
-                true,
-                publicIp,
-                Instant.now()
-        );
+    private static CloudflareApiRecord createRecord(
+            String zoneId,
+            String recordName,
+            String publicIp,
+            CloudflareService cloudflareService
+    ) {
+        return cloudflareService.createDnsRecord(zoneId, CloudflareApiRecord.newARecord(recordName, publicIp));
     }
 
-    private ResourceID getZoneResourceId(CloudflareRecord record) {
+    private static CloudflareApiRecord updateRecord(
+            CloudflareApiRecord existingRecord,
+            String zoneId, String publicIp,
+            CloudflareService cloudflareService
+    ) {
+        if (existingRecord.content().equals(publicIp)) {
+            LOGGER.info("Ip is correctly set to {} for {}. Nothing to do.", publicIp, existingRecord.name());
+            return existingRecord;
+        } else {
+            return cloudflareService.updateDnsRecord(zoneId, existingRecord.updated(publicIp));
+        }
+    }
+
+    private ResourceID getZoneResourceId(CloudflareRecordCustomResource record) {
         return new ResourceID(record.getSpec().zoneRef(), record.getMetadata().getNamespace());
     }
 

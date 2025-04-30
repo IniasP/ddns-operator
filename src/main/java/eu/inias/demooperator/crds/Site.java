@@ -1,4 +1,0 @@
-package eu.inias.demooperator.crds;
-
-public record Site() {
-}

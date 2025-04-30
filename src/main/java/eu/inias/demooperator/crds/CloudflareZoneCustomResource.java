@@ -11,5 +11,7 @@ import io.fabric8.kubernetes.model.annotation.Version;
 @Version("v1")
 @Kind("CloudflareZone")
 @Plural("cloudflarezones")
-public class CloudflareZone extends CustomResource<CloudflareZoneSpec, SimpleStatus> implements Namespaced {
+public class CloudflareZoneCustomResource
+        extends CustomResource<CloudflareZoneSpec, CloudflareZoneStatus>
+        implements Namespaced {
 }

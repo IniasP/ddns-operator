@@ -1,7 +1,7 @@
 package eu.inias.demooperator.crds;
 
-public record SimpleStatus(
+public record CloudflareZoneStatus(
         Long observedGeneration,
-        Boolean ready
-) implements Status {
+        String id
+) {
 }

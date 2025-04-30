@@ -16,12 +16,12 @@ class CloudflareServiceTest {
     @Test
     void realApiTest() {
         CloudflareService cloudflareService = cloudflareServiceFactory.create("uulLpdTk978J16a2i0uV-cTQV_V-K1YlhmvpxHza");
-        CloudflareApiZone zone = cloudflareService.getZone("inias.eu");
+        CloudflareApiZone zone = cloudflareService.getZoneByName("inias.eu");
 //        String ip = restClient.get()
 //                .uri("https://icanhazip.com")
 //                .retrieve()
 //                .body(String.class);
-        Optional<CloudflareApiRecord> aRecord = cloudflareService.getDnsRecord(zone.id(), "ha.inias.eu");
+        Optional<CloudflareApiRecord> aRecord = cloudflareService.getDnsRecordByName(zone.id(), "ha.inias.eu");
         System.out.println();
     }
 }

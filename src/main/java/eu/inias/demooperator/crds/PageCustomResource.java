@@ -9,9 +9,9 @@ import io.fabric8.kubernetes.model.annotation.Version;
 
 @Group("demo.inias.eu")
 @Version("v1")
-@Kind("CloudflareRecord")
-@Plural("cloudflarerecords")
-public class CloudflareRecord
-        extends CustomResource<CloudflareRecordSpec, CloudflareRecordStatus>
+@Kind("Page")
+@Plural("pages")
+public class PageCustomResource
+        extends CustomResource<PageSpec, ObservedGenerationStatus>
         implements Namespaced {
 }
