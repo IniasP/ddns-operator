@@ -31,7 +31,8 @@ public class SiteConfigMapDependentResource extends CRUDKubernetesDependentResou
         htmlFiles.put("index.html", generateIndexHtml(pages));
         for (PageCustomResource page : pages) {
             String path = page.getSpec().path() + ".html";
-            htmlFiles.put(path, page.getSpec().content());
+            String content = wrapPageContent(page.getMetadata().getName(), page.getSpec().content());
+            htmlFiles.put(path, content);
         }
         return new ConfigMapBuilder()
                 .withNewMetadata()
@@ -92,4 +93,36 @@ public class SiteConfigMapDependentResource extends CRUDKubernetesDependentResou
 
         return sb.toString();
     }
+
+    private String wrapPageContent(String title, String bodyContent) {
+        return """
+                <html>
+                  <head>
+                    <style>
+                      body {
+                        font-family: sans-serif;
+                        padding: 2rem;
+                        background-color: #f9f9f9;
+                      }
+                      h1 {
+                        color: #333;
+                      }
+                      a {
+                        color: #0066cc;
+                      }
+                      a:hover {
+                        text-decoration: underline;
+                      }
+                    </style>
+                    <title>""" + title + """
+                    </title>
+                  </head>
+                  <body>
+                    <h1>""" + title + "</h1>" +
+                    bodyContent + """
+                  </body>
+                </html>
+                """;
+    }
+
 }
