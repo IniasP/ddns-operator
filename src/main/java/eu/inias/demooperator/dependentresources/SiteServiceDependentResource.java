@@ -18,15 +18,15 @@ public class SiteServiceDependentResource
 
     @Override
     protected Service desired(SiteCustomResource site, Context<SiteCustomResource> context) {
-        String appName = "site-" + site.getMetadata().getName();
+        String siteName = site.getMetadata().getName();
         return new ServiceBuilder()
                 .withNewMetadata()
-                .withName(appName)
+                .withName(siteName)
                 .withNamespace(site.getMetadata().getNamespace())
-                .withLabels(Map.of("app", appName))
+                .withLabels(Map.of("app", siteName))
                 .endMetadata()
                 .withNewSpec()
-                .withSelector(Map.of("app", appName))
+                .withSelector(Map.of("app", siteName))
                 .withPorts(
                         new ServicePortBuilder()
                                 .withProtocol("TCP")

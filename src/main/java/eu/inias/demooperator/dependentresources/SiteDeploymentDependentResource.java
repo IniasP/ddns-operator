@@ -17,10 +17,8 @@ public class SiteDeploymentDependentResource
 
     @Override
     protected Deployment desired(SiteCustomResource site, Context<SiteCustomResource> context) {
-        // TODO: extract this, configmap uses same name
-        // TODO: it may also be possible to add a UUID here for uniqueness (calculate into status field)
-        String appName = "site-" + site.getMetadata().getName();
-        Map<String, String> labels = Map.of("app", appName);
+        String siteName = site.getMetadata().getName();
+        Map<String, String> labels = Map.of("app", siteName);
         Container container = new ContainerBuilder()
                 .withName("nginx")
                 .withImage("nginx:alpine")
@@ -35,12 +33,12 @@ public class SiteDeploymentDependentResource
         Volume volume = new VolumeBuilder()
                 .withName("site-content")
                 .withNewConfigMap()
-                .withName(appName)
+                .withName(siteName)
                 .endConfigMap()
                 .build();
         return new DeploymentBuilder()
                 .withNewMetadata()
-                .withName(appName)
+                .withName(siteName)
                 .withNamespace(site.getMetadata().getNamespace())
                 .withLabels(labels)
                 .withAnnotations(Map.of("reloader.stakater.com/auto", "true"))
@@ -48,7 +46,7 @@ public class SiteDeploymentDependentResource
                 .withNewSpec()
                 .withReplicas(2)
                 .withNewSelector()
-                .addToMatchLabels("app", appName)
+                .addToMatchLabels("app", siteName)
                 .endSelector()
                 .withNewTemplate()
                 .withNewMetadata()

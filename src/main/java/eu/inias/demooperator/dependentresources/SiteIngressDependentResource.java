@@ -19,14 +19,14 @@ public class SiteIngressDependentResource
 
     @Override
     protected Ingress desired(SiteCustomResource site, Context<SiteCustomResource> context) {
-        String appName = "site-" + site.getMetadata().getName();
+        String siteName = site.getMetadata().getName();
         return context.getSecondaryResource(CloudflareRecordCustomResource.class)
                 .map(cloudflareRecord ->
                         new IngressBuilder()
                                 .withNewMetadata()
-                                .withName(appName)
+                                .withName(siteName)
                                 .withNamespace(site.getMetadata().getNamespace())
-                                .withLabels(Map.of("app", appName))
+                                .withLabels(Map.of("app", siteName))
                                 .endMetadata()
                                 .withNewSpec()
                                 .withIngressClassName("nginx")
@@ -38,7 +38,7 @@ public class SiteIngressDependentResource
                                                 .withPathType("Prefix")
                                                 .withNewBackend()
                                                 .withNewService()
-                                                .withName(appName)
+                                                .withName(siteName)
                                                 .withNewPort()
                                                 .withNumber(80)
                                                 .endPort()

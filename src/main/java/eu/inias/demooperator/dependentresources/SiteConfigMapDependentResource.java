@@ -35,7 +35,7 @@ public class SiteConfigMapDependentResource extends CRUDKubernetesDependentResou
         }
         return new ConfigMapBuilder()
                 .withNewMetadata()
-                .withName("site-" + site.getMetadata().getName())
+                .withName(site.getMetadata().getName())
                 .withNamespace(site.getMetadata().getNamespace())
                 .endMetadata()
                 .withData(htmlFiles)
@@ -43,7 +43,39 @@ public class SiteConfigMapDependentResource extends CRUDKubernetesDependentResou
     }
 
     private String generateIndexHtml(List<PageCustomResource> pages) {
-        StringBuilder sb = new StringBuilder("<h1>Index</h1><ul>");
+        StringBuilder sb = new StringBuilder("""
+                    <html>
+                      <head>
+                        <style>
+                          body {
+                            font-family: sans-serif;
+                            padding: 2rem;
+                            background-color: #f9f9f9;
+                          }
+                          h1 {
+                            color: #333;
+                          }
+                          ul {
+                            list-style: none;
+                            padding: 0;
+                          }
+                          li {
+                            margin: 0.5rem 0;
+                          }
+                          a {
+                            text-decoration: none;
+                            color: #0066cc;
+                          }
+                          a:hover {
+                            text-decoration: underline;
+                          }
+                        </style>
+                      </head>
+                      <body>
+                        <h1>Index</h1>
+                        <ul>
+                """);
+
         for (PageCustomResource page : pages) {
             sb.append("<li><a href=\"")
                     .append(page.getSpec().path())
@@ -51,7 +83,13 @@ public class SiteConfigMapDependentResource extends CRUDKubernetesDependentResou
                     .append(page.getMetadata().getName())
                     .append("</a></li>");
         }
-        sb.append("</ul>");
+
+        sb.append("""
+                        </ul>
+                      </body>
+                    </html>
+                """);
+
         return sb.toString();
     }
 }
