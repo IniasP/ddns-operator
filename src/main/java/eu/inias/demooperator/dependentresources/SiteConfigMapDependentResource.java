@@ -9,84 +9,12 @@ import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
 import io.javaoperatorsdk.operator.api.reconciler.Context;
 import io.javaoperatorsdk.operator.processing.dependent.kubernetes.CRUDKubernetesDependentResource;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class SiteConfigMapDependentResource extends CRUDKubernetesDependentResource<ConfigMap, SiteCustomResource> {
-    private static final String PAGE_TEMPLATE = """
-            <html>
-              <head>
-                <meta charset="utf-8" />
-                <title>{{title}}</title>
-                <style>
-                  html,
-                  body {
-                    font-family: sans-serif;
-                    background-color: #f9f9f9;
-                    display: flex;
-                    flex-direction: column;
-                    min-height: 100vh;
-                    margin: 0;
-                  }
-                  main {
-                    margin: 2rem;
-                  }
-                  header,
-                  footer {
-                    background-color: #eee;
-                    padding: 1rem;
-                    text-align: center;
-                    font-size: 0.9rem;
-                    color: #666;
-                  }
-                  h1,
-                  h2,
-                  h3 {
-                    color: #333;
-                  }
-                  a {
-                    text-decoration: none;
-                    color: #0066cc;
-                  }
-                  a:hover {
-                    text-decoration: underline;
-                  }
-                  ul {
-                    list-style: none;
-                    padding: 0;
-                  }
-                  li {
-                    margin: 0.5rem 0;
-                  }
-                  pre {
-                    background: #eee;
-                    padding: 1em;
-                    overflow-x: auto;
-                  }
-                  code {
-                    background: #eee;
-                    padding: 0.2em 0.4em;
-                  }
-                  footer {
-                    position: sticky;
-                    top: 100vh;
-                  }
-                </style>
-              </head>
-              <body>
-                <header>
-                  <a href="index.html">&larr; Back to index</a>
-                </header>
-                <main>
-                  <h1>{{title}}</h1>
-                  {{content}}
-                </main>
-                <footer>Powered by Kubernetes 😎</footer>
-              </body>
-            </html>
-            """;
-
     private static final Parser PARSER = Parser.builder().build();
     private static final HtmlRenderer RENDERER = HtmlRenderer.builder().build();
 
@@ -103,13 +31,14 @@ public class SiteConfigMapDependentResource extends CRUDKubernetesDependentResou
                 .getItems()
                 .stream()
                 .filter(page -> site.getMetadata().getName().equals(page.getSpec().siteRef()))
+                .sorted(Comparator.comparing(p -> p.getSpec().title()))
                 .toList();
 
         Map<String, String> htmlFiles = new HashMap<>();
-        htmlFiles.put("index.html", generateIndexHtml(pages));
+        htmlFiles.put("index.html", generateIndexHtml(pages, site.getSpec().indexTemplate()));
         for (PageCustomResource page : pages) {
             String path = page.getSpec().path() + ".html";
-            htmlFiles.put(path, renderPage(page));
+            htmlFiles.put(path, renderPage(page, site.getSpec().pageTemplate()));
         }
         return new ConfigMapBuilder()
                 .withNewMetadata()
@@ -120,63 +49,32 @@ public class SiteConfigMapDependentResource extends CRUDKubernetesDependentResou
                 .build();
     }
 
-    private String renderPage(PageCustomResource page) {
+    private String renderPage(PageCustomResource page, String template) {
         String htmlBody = RENDERER.render(PARSER.parse(page.getSpec().content()));
         String title = page.getSpec().title();
-
-        return PAGE_TEMPLATE
+        return template
                 .replace("{{title}}", title)
                 .replace("{{content}}", htmlBody);
     }
 
-    private String generateIndexHtml(List<PageCustomResource> pages) {
-        StringBuilder sb = new StringBuilder("""
-                    <html>
-                      <head>
-                        <style>
-                          body {
-                            font-family: sans-serif;
-                            padding: 2rem;
-                            background-color: #f9f9f9;
-                          }
-                          h1 {
-                            color: #333;
-                          }
-                          ul {
-                            list-style: none;
-                            padding: 0;
-                          }
-                          li {
-                            margin: 0.5rem 0;
-                          }
-                          a {
-                            text-decoration: none;
-                            color: #0066cc;
-                          }
-                          a:hover {
-                            text-decoration: underline;
-                          }
-                        </style>
-                      </head>
-                      <body>
-                        <h1>Index</h1>
-                        <ul>
-                """);
+    private String generateIndexHtml(List<PageCustomResource> pages, String template) {
+        if (template == null) {
+            template = "<h1>Index</h1>\n{{index}}";
+        }
+        String indexList = generateIndexListHtml(pages);
+        return template.replace("{{index}}", indexList);
+    }
 
+    private String generateIndexListHtml(List<PageCustomResource> pages) {
+        StringBuilder sb = new StringBuilder("<ul>");
         for (PageCustomResource page : pages) {
             sb.append("<li><a href=\"")
-                    .append(page.getSpec().path())
+                    .append(page.getSpec().title())
                     .append(".html\">")
                     .append(page.getMetadata().getName())
                     .append("</a></li>");
         }
-
-        sb.append("""
-                        </ul>
-                      </body>
-                    </html>
-                """);
-
+        sb.append("</ul>");
         return sb.toString();
     }
 }
