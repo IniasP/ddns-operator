@@ -49,6 +49,11 @@
             <artifactId>operator-framework-spring-boot-starter</artifactId>
             <version>${josdk-spring-boot-starter.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.vladsch.flexmark</groupId>
+            <artifactId>flexmark-all</artifactId>
+            <version>0.64.6</version>
+        </dependency>
         <!-- TEST -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
