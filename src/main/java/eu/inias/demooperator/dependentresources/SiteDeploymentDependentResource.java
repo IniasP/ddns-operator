@@ -1,6 +1,6 @@
 package eu.inias.demooperator.dependentresources;
 
-import eu.inias.demooperator.crds.SiteCustomResource;
+import eu.inias.demooperator.crds.site.SiteCustomResource;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
@@ -19,23 +19,6 @@ public class SiteDeploymentDependentResource
     protected Deployment desired(SiteCustomResource site, Context<SiteCustomResource> context) {
         String siteName = site.getMetadata().getName();
         Map<String, String> labels = Map.of("app", siteName);
-        Container container = new ContainerBuilder()
-                .withName("nginx")
-                .withImage("nginx:alpine")
-                .withPorts(new ContainerPortBuilder().withContainerPort(80).build())
-                .withVolumeMounts(
-                        new VolumeMountBuilder()
-                                .withName("site-content")
-                                .withMountPath("/usr/share/nginx/html")
-                                .build()
-                )
-                .build();
-        Volume volume = new VolumeBuilder()
-                .withName("site-content")
-                .withNewConfigMap()
-                .withName(siteName)
-                .endConfigMap()
-                .build();
         return new DeploymentBuilder()
                 .withNewMetadata()
                 .withName(siteName)
@@ -53,11 +36,36 @@ public class SiteDeploymentDependentResource
                 .withLabels(labels)
                 .endMetadata()
                 .withNewSpec()
-                .withContainers(container)
-                .withVolumes(volume)
+                .withContainers(nginxContainer())
+                .withVolumes(volume(siteName))
                 .endSpec()
                 .endTemplate()
                 .endSpec()
+                .build();
+    }
+
+    private static Container nginxContainer() {
+        return new ContainerBuilder()
+                .withName("nginx")
+                .withImage("nginx:alpine")
+                .withPorts(new ContainerPortBuilder().withContainerPort(80).build())
+                .withVolumeMounts(volumeMount())
+                .build();
+    }
+
+    private static VolumeMount volumeMount() {
+        return new VolumeMountBuilder()
+                .withName("site-content")
+                .withMountPath("/usr/share/nginx/html")
+                .build();
+    }
+
+    private static Volume volume(String siteName) {
+        return new VolumeBuilder()
+                .withName("site-content")
+                .withNewConfigMap()
+                .withName(siteName)
+                .endConfigMap()
                 .build();
     }
 }

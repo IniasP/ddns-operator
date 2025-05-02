@@ -1,9 +1,9 @@
 package eu.inias.demooperator.reconcilers;
 
-import eu.inias.demooperator.crds.CloudflareRecordCustomResource;
+import eu.inias.demooperator.crds.cloudflarerecord.CloudflareRecordCustomResource;
 import eu.inias.demooperator.crds.ObservedGenerationStatus;
-import eu.inias.demooperator.crds.PageCustomResource;
-import eu.inias.demooperator.crds.SiteCustomResource;
+import eu.inias.demooperator.crds.page.PageCustomResource;
+import eu.inias.demooperator.crds.site.SiteCustomResource;
 import eu.inias.demooperator.dependentresources.SiteConfigMapDependentResource;
 import eu.inias.demooperator.dependentresources.SiteDeploymentDependentResource;
 import eu.inias.demooperator.dependentresources.SiteIngressDependentResource;
@@ -16,6 +16,8 @@ import io.javaoperatorsdk.operator.processing.event.source.EventSource;
 import io.javaoperatorsdk.operator.processing.event.source.PrimaryToSecondaryMapper;
 import io.javaoperatorsdk.operator.processing.event.source.SecondaryToPrimaryMapper;
 import io.javaoperatorsdk.operator.processing.event.source.informer.InformerEventSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -40,24 +42,23 @@ import java.util.stream.Collectors;
                 dependsOn = "site-deployment"
         ),
         @Dependent(
+                name = "site-ingress",
                 type = SiteIngressDependentResource.class,
                 dependsOn = "site-service"
         )
 })
 public class SiteReconciler implements Reconciler<SiteCustomResource> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SiteReconciler.class);
+
     @Override
-    public UpdateControl<SiteCustomResource> reconcile(
-            SiteCustomResource resource,
-            Context<SiteCustomResource> context
-    ) {
-        resource.setStatus(new ObservedGenerationStatus(resource.getMetadata().getGeneration()));
-        return UpdateControl.patchStatus(resource);
+    public UpdateControl<SiteCustomResource> reconcile(SiteCustomResource siteResource, Context<SiteCustomResource> context) {
+        siteResource.setStatus(new ObservedGenerationStatus(siteResource.getMetadata().getGeneration()));
+        LOGGER.info("Reconciled CloudflareRecord {}", siteResource.getMetadata().getName());
+        return UpdateControl.patchStatus(siteResource);
     }
 
     @Override
-    public List<EventSource<?, SiteCustomResource>> prepareEventSources(
-            EventSourceContext<SiteCustomResource> context
-    ) {
+    public List<EventSource<?, SiteCustomResource>> prepareEventSources(EventSourceContext<SiteCustomResource> context) {
         return List.of(getCloudflareRecordEventSource(context), getPageEventSource(context));
     }
 
@@ -67,10 +68,7 @@ public class SiteReconciler implements Reconciler<SiteCustomResource> {
                 new ResourceID(page.getSpec().siteRef(), page.getMetadata().getNamespace())
         );
         InformerEventSourceConfiguration<PageCustomResource> configuration =
-                InformerEventSourceConfiguration.from(
-                                PageCustomResource.class,
-                                SiteCustomResource.class
-                        )
+                InformerEventSourceConfiguration.from(PageCustomResource.class, SiteCustomResource.class)
                         .withSecondaryToPrimaryMapper(secondaryToPrimary)
                         .build();
         return new InformerEventSource<>(configuration, context);
@@ -87,10 +85,7 @@ public class SiteReconciler implements Reconciler<SiteCustomResource> {
                 .map(ResourceID::fromResource)
                 .collect(Collectors.toSet());
         InformerEventSourceConfiguration<CloudflareRecordCustomResource> configuration =
-                InformerEventSourceConfiguration.from(
-                                CloudflareRecordCustomResource.class,
-                                SiteCustomResource.class
-                        )
+                InformerEventSourceConfiguration.from(CloudflareRecordCustomResource.class, SiteCustomResource.class)
                         .withPrimaryToSecondaryMapper(primaryToSecondary)
                         .withSecondaryToPrimaryMapper(secondaryToPrimary)
                         .build();

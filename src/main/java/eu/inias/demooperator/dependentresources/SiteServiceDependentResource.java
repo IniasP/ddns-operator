@@ -1,6 +1,6 @@
 package eu.inias.demooperator.dependentresources;
 
-import eu.inias.demooperator.crds.SiteCustomResource;
+import eu.inias.demooperator.crds.site.SiteCustomResource;
 import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.ServiceBuilder;

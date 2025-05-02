@@ -1,4 +1,4 @@
-package eu.inias.demooperator.crds;
+package eu.inias.demooperator.crds.cloudflarezone;
 
 public record CloudflareZoneStatus(
         Long observedGeneration,

@@ -1,4 +1,4 @@
-package eu.inias.demooperator.crds;
+package eu.inias.demooperator.crds.cloudflarerecord;
 
 public record CloudflareRecordSpec(
         String zoneRef,

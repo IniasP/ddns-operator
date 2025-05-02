@@ -1,8 +1,8 @@
 package eu.inias.demooperator.reconcilers;
 
-import eu.inias.demooperator.crds.CloudflareRecordCustomResource;
-import eu.inias.demooperator.crds.CloudflareRecordStatus;
-import eu.inias.demooperator.crds.CloudflareZoneCustomResource;
+import eu.inias.demooperator.crds.cloudflarerecord.CloudflareRecordCustomResource;
+import eu.inias.demooperator.crds.cloudflarerecord.CloudflareRecordStatus;
+import eu.inias.demooperator.crds.cloudflarezone.CloudflareZoneCustomResource;
 import eu.inias.demooperator.model.cloudflare.CloudflareApiRecord;
 import eu.inias.demooperator.services.CloudflareService;
 import eu.inias.demooperator.services.CloudflareServiceFactory;
@@ -81,6 +81,7 @@ public class CloudflareRecordReconciler
                 host
         );
         recordResource.setStatus(status);
+        LOGGER.info("Reconciled CloudflareRecord {}", recordResource.getMetadata().getName());
         return UpdateControl.patchStatus(recordResource);
     }
 
@@ -122,10 +123,7 @@ public class CloudflareRecordReconciler
                 .map(ResourceID::fromResource)
                 .collect(Collectors.toSet());
         InformerEventSourceConfiguration<CloudflareZoneCustomResource> configuration =
-                InformerEventSourceConfiguration.from(
-                                CloudflareZoneCustomResource.class,
-                                CloudflareRecordCustomResource.class
-                        )
+                InformerEventSourceConfiguration.from(CloudflareZoneCustomResource.class, CloudflareRecordCustomResource.class)
                         .withPrimaryToSecondaryMapper(primaryToSecondary)
                         .withSecondaryToPrimaryMapper(secondaryToPrimary)
                         .build();
@@ -136,7 +134,7 @@ public class CloudflareRecordReconciler
             KubernetesService kubernetesService,
             CloudflareZoneCustomResource zoneResource
     ) {
-        String apiToken = kubernetesService.getApiToken(zoneResource);
+        String apiToken = kubernetesService.getCloudflareApiToken(zoneResource);
         return cloudflareServiceFactory.create(apiToken);
     }
 

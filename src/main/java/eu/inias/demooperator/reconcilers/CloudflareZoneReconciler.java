@@ -1,25 +1,24 @@
 package eu.inias.demooperator.reconcilers;
 
-import eu.inias.demooperator.crds.CloudflareZoneCustomResource;
-import eu.inias.demooperator.crds.CloudflareZoneStatus;
-import eu.inias.demooperator.crds.SecretReference;
+import eu.inias.demooperator.crds.cloudflarezone.CloudflareZoneCustomResource;
+import eu.inias.demooperator.crds.cloudflarezone.CloudflareZoneStatus;
 import eu.inias.demooperator.exceptions.ReconciliationException;
 import eu.inias.demooperator.model.cloudflare.CloudflareApiZone;
 import eu.inias.demooperator.services.CloudflareServiceFactory;
-import io.fabric8.kubernetes.client.KubernetesClient;
+import eu.inias.demooperator.services.KubernetesService;
 import io.javaoperatorsdk.operator.api.reconciler.Context;
 import io.javaoperatorsdk.operator.api.reconciler.ControllerConfiguration;
 import io.javaoperatorsdk.operator.api.reconciler.Reconciler;
 import io.javaoperatorsdk.operator.api.reconciler.UpdateControl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-
-import java.util.Base64;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 @Component
 @ControllerConfiguration
 public class CloudflareZoneReconciler implements Reconciler<CloudflareZoneCustomResource> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CloudflareZoneReconciler.class);
+
     private final CloudflareServiceFactory cloudflareServiceFactory;
 
     public CloudflareZoneReconciler(CloudflareServiceFactory cloudflareServiceFactory) {
@@ -28,43 +27,20 @@ public class CloudflareZoneReconciler implements Reconciler<CloudflareZoneCustom
 
     @Override
     public UpdateControl<CloudflareZoneCustomResource> reconcile(
-            CloudflareZoneCustomResource resource,
+            CloudflareZoneCustomResource zoneResource,
             Context<CloudflareZoneCustomResource> context
     ) {
-        String cloudflareZoneName = resource.getSpec().domain();
-        CloudflareApiZone zone = cloudflareServiceFactory.create(getApiToken(resource, context.getClient()))
+        String cloudflareZoneName = zoneResource.getSpec().domain();
+        KubernetesService kubernetesService = new KubernetesService(context.getClient());
+        String apiToken = kubernetesService.getCloudflareApiToken(zoneResource);
+        CloudflareApiZone zone = cloudflareServiceFactory.create(apiToken)
                 .getZoneByName(cloudflareZoneName)
                 .orElseThrow(() -> new ReconciliationException("Zone %s not found".formatted(cloudflareZoneName)));
-        resource.setStatus(new CloudflareZoneStatus(
-                resource.getMetadata().getGeneration(),
+        zoneResource.setStatus(new CloudflareZoneStatus(
+                zoneResource.getMetadata().getGeneration(),
                 zone.id()
         ));
-        return UpdateControl.patchStatus(resource);
-    }
-
-    // TODO: avoid duplication of these 2 methods (K8sResourcesService?)
-
-    private static String getApiToken(CloudflareZoneCustomResource zoneResource, KubernetesClient client) {
-        SecretReference apiTokenSecretRef = zoneResource.getSpec().apiTokenSecretRef();
-        return getSecret(apiTokenSecretRef, zoneResource.getMetadata().getNamespace(), client);
-    }
-
-    private static String getSecret(
-            SecretReference secretReference,
-            String namespace,
-            KubernetesClient client
-    ) {
-        String secretBase64 = client.secrets()
-                .inNamespace(namespace)
-                .withName(secretReference.name())
-                .require()
-                .getData()
-                .get(secretReference.key());
-        if (secretBase64 == null) {
-            throw new IllegalStateException(
-                    "Key %s is not present in secret %s.".formatted(secretReference.key(), secretReference.name())
-            );
-        }
-        return new String(Base64.getDecoder().decode(secretBase64), UTF_8);
+        LOGGER.info("Reconciled CloudflareZone {}", zoneResource.getMetadata().getName());
+        return UpdateControl.patchStatus(zoneResource);
     }
 }

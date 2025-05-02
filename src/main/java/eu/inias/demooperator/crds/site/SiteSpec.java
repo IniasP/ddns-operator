@@ -1,4 +1,4 @@
-package eu.inias.demooperator.crds;
+package eu.inias.demooperator.crds.site;
 
 public record SiteSpec(
         String cloudflareRecordRef,

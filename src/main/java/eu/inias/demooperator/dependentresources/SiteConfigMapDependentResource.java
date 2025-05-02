@@ -2,8 +2,8 @@ package eu.inias.demooperator.dependentresources;
 
 import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.parser.Parser;
-import eu.inias.demooperator.crds.PageCustomResource;
-import eu.inias.demooperator.crds.SiteCustomResource;
+import eu.inias.demooperator.crds.page.PageCustomResource;
+import eu.inias.demooperator.crds.site.SiteCustomResource;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
 import io.javaoperatorsdk.operator.api.reconciler.Context;
@@ -24,16 +24,7 @@ public class SiteConfigMapDependentResource extends CRUDKubernetesDependentResou
 
     @Override
     protected ConfigMap desired(SiteCustomResource site, Context<SiteCustomResource> context) {
-        List<PageCustomResource> pages = context.getClient()
-                .resources(PageCustomResource.class)
-                .inNamespace(site.getMetadata().getNamespace())
-                .list()
-                .getItems()
-                .stream()
-                .filter(page -> site.getMetadata().getName().equals(page.getSpec().siteRef()))
-                .sorted(Comparator.comparing(p -> p.getSpec().title()))
-                .toList();
-
+        List<PageCustomResource> pages = getPageResources(site, context);
         Map<String, String> htmlFiles = new HashMap<>();
         htmlFiles.put("index.html", generateIndexHtml(pages, site.getSpec().indexTemplate()));
         for (PageCustomResource page : pages) {
@@ -47,6 +38,21 @@ public class SiteConfigMapDependentResource extends CRUDKubernetesDependentResou
                 .endMetadata()
                 .withData(htmlFiles)
                 .build();
+    }
+
+    private static List<PageCustomResource> getPageResources(
+            SiteCustomResource site,
+            Context<SiteCustomResource> context
+    ) {
+        return context.getClient()
+                .resources(PageCustomResource.class)
+                .inNamespace(site.getMetadata().getNamespace())
+                .list()
+                .getItems()
+                .stream()
+                .filter(page -> site.getMetadata().getName().equals(page.getSpec().siteRef()))
+                .sorted(Comparator.comparing(p -> p.getSpec().title()))
+                .toList();
     }
 
     private String renderPage(PageCustomResource page, String template) {

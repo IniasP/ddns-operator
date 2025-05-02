@@ -1,5 +1,6 @@
-package eu.inias.demooperator.crds;
+package eu.inias.demooperator.crds.page;
 
+import eu.inias.demooperator.crds.ObservedGenerationStatus;
 import io.fabric8.kubernetes.api.model.Namespaced;
 import io.fabric8.kubernetes.client.CustomResource;
 import io.fabric8.kubernetes.model.annotation.Group;
@@ -9,9 +10,9 @@ import io.fabric8.kubernetes.model.annotation.Version;
 
 @Group("demo.inias.eu")
 @Version("v1")
-@Kind("CloudflareRecord")
-@Plural("cloudflarerecords")
-public class CloudflareRecordCustomResource
-        extends CustomResource<CloudflareRecordSpec, CloudflareRecordStatus>
+@Kind("Page")
+@Plural("pages")
+public class PageCustomResource
+        extends CustomResource<PageSpec, ObservedGenerationStatus>
         implements Namespaced {
 }

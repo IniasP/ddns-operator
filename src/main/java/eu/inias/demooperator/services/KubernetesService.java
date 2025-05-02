@@ -1,7 +1,7 @@
 package eu.inias.demooperator.services;
 
-import eu.inias.demooperator.crds.CloudflareRecordCustomResource;
-import eu.inias.demooperator.crds.CloudflareZoneCustomResource;
+import eu.inias.demooperator.crds.cloudflarerecord.CloudflareRecordCustomResource;
+import eu.inias.demooperator.crds.cloudflarezone.CloudflareZoneCustomResource;
 import eu.inias.demooperator.crds.SecretReference;
 import io.fabric8.kubernetes.client.KubernetesClient;
 
@@ -16,7 +16,7 @@ public class KubernetesService {
         this.client = client;
     }
 
-    public String getApiToken(CloudflareZoneCustomResource zoneResource) {
+    public String getCloudflareApiToken(CloudflareZoneCustomResource zoneResource) {
         SecretReference apiTokenSecretRef = zoneResource.getSpec().apiTokenSecretRef();
         return getSecret(apiTokenSecretRef, zoneResource.getMetadata().getNamespace());
     }

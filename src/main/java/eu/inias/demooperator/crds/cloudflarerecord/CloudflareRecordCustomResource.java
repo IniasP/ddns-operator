@@ -1,4 +1,4 @@
-package eu.inias.demooperator.crds;
+package eu.inias.demooperator.crds.cloudflarerecord;
 
 import io.fabric8.kubernetes.api.model.Namespaced;
 import io.fabric8.kubernetes.client.CustomResource;
@@ -9,11 +9,9 @@ import io.fabric8.kubernetes.model.annotation.Version;
 
 @Group("demo.inias.eu")
 @Version("v1")
-@Kind("Site")
-@Plural("sites")
-public class SiteCustomResource
-        extends CustomResource<SiteSpec, ObservedGenerationStatus>
+@Kind("CloudflareRecord")
+@Plural("cloudflarerecords")
+public class CloudflareRecordCustomResource
+        extends CustomResource<CloudflareRecordSpec, CloudflareRecordStatus>
         implements Namespaced {
-
-
 }

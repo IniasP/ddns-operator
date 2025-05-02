@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-// TODO: make this some kind of remote service and add a CloudflareService with k8s logic
 public class CloudflareService {
     private final RestClient cloudflareRestClient;
 
