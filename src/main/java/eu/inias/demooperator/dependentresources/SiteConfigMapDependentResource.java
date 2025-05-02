@@ -24,6 +24,17 @@ public class SiteConfigMapDependentResource extends CRUDKubernetesDependentResou
                     font-family: sans-serif;
                     padding: 2rem;
                     background-color: #f9f9f9;
+                    display: flex;
+                    flex-direction: column;
+                    min-height: 100vh;
+                  }
+                  header, footer {
+                    background-color: #eee;
+                    padding: 1rem;
+                    text-align: center;
+                    font-size: 0.9rem;
+                    color: #666;
+                    margin: -2rem -2rem 2rem -2rem;
                   }
                   h1, h2, h3 {
                     color: #333;
@@ -51,11 +62,22 @@ public class SiteConfigMapDependentResource extends CRUDKubernetesDependentResou
                     background: #eee;
                     padding: 0.2em 0.4em;
                   }
+                  main {
+                    flex: 1;
+                  }
                 </style>
               </head>
               <body>
-                <h1>{{title}}</h1>
-                {{content}}
+                <header>
+                  <a href="index.html">&larr; Back to index</a>
+                </header>
+                <main>
+                  <h1>{{title}}</h1>
+                  {{content}}
+                </main>
+                <footer>
+                  Powered by the DDNS Operator
+                </footer>
               </body>
             </html>
             """;
