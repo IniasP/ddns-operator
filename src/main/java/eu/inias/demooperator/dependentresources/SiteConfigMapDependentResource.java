@@ -72,9 +72,9 @@ public class SiteConfigMapDependentResource extends CRUDKubernetesDependentResou
         StringBuilder sb = new StringBuilder("<ul>");
         for (PageCustomResource page : pages) {
             sb.append("<li><a href=\"")
-                    .append(page.getSpec().title())
+                    .append(page.getSpec().path())
                     .append(".html\">")
-                    .append(page.getMetadata().getName())
+                    .append(page.getSpec().title())
                     .append("</a></li>");
         }
         sb.append("</ul>");
