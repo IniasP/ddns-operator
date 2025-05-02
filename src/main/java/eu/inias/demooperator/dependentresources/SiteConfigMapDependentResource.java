@@ -51,6 +51,9 @@ public class SiteConfigMapDependentResource extends CRUDKubernetesDependentResou
 
     private String renderPage(PageCustomResource page, String template) {
         String htmlBody = RENDERER.render(PARSER.parse(page.getSpec().content()));
+        if (template == null) {
+            return htmlBody;
+        }
         String title = page.getSpec().title();
         return template
                 .replace("{{title}}", title)
