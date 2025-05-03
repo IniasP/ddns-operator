@@ -100,6 +100,7 @@ public class CloudflareRecordReconciler
                     return cloudflareService.getDnsRecordByName(zoneId, recordName);
                 })
                 .ifPresent(existingRecord -> cloudflareService.deleteDnsRecord(zoneId, existingRecord.id()));
+        LOGGER.info("Deleted Cloudflare record {} ({})", recordResource.getMetadata().getName(), recordResource.getStatus().host());
         return DeleteControl.defaultDelete();
     }
 
