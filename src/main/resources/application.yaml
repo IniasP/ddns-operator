@@ -1,6 +1,6 @@
 spring:
   application:
-    name: DemoOperator
+    name: DdnsOperator
 
 cloudflare:
   api:

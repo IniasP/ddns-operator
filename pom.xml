@@ -9,10 +9,10 @@
         <relativePath/>
     </parent>
     <groupId>eu.inias</groupId>
-    <artifactId>DemoOperator</artifactId>
+    <artifactId>ddns-operator</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>DemoOperator</name>
-    <description>DemoOperator</description>
+    <name>DdnsOperator</name>
+    <description>DDNS Operator</description>
     <url/>
     <licenses>
         <license/>
