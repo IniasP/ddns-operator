@@ -18,7 +18,9 @@
         <license/>
     </licenses>
     <developers>
-        <developer/>
+        <developer>
+            <name>Inias Peeters</name>
+        </developer>
     </developers>
     <scm>
         <connection/>
@@ -62,6 +64,12 @@
         </dependency>
         <dependency>
             <groupId>io.javaoperatorsdk</groupId>
+            <artifactId>operator-framework-spring-boot-starter-test</artifactId>
+            <version>${josdk-spring-boot-starter.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.javaoperatorsdk</groupId>
             <artifactId>operator-framework-junit-5</artifactId>
             <version>${josdk.version}</version>
             <scope>test</scope>
@@ -89,5 +97,4 @@
             </plugin>
         </plugins>
     </build>
-
 </project>
