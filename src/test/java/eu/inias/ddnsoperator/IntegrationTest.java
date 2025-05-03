@@ -5,15 +5,16 @@ import eu.inias.ddnsoperator.crds.cloudflarerecord.CloudflareRecordCustomResourc
 import eu.inias.ddnsoperator.crds.cloudflarerecord.CloudflareRecordSpec;
 import eu.inias.ddnsoperator.crds.cloudflarezone.CloudflareZoneCustomResource;
 import eu.inias.ddnsoperator.crds.cloudflarezone.CloudflareZoneSpec;
+import eu.inias.ddnsoperator.crds.page.PageCustomResource;
+import eu.inias.ddnsoperator.crds.page.PageSpec;
+import eu.inias.ddnsoperator.crds.site.SiteCustomResource;
+import eu.inias.ddnsoperator.crds.site.SiteSpec;
 import eu.inias.ddnsoperator.model.cloudflare.CloudflareApiZone;
 import eu.inias.ddnsoperator.services.PublicIpService;
 import eu.inias.ddnsoperator.stubs.TestCloudflareService;
 import eu.inias.ddnsoperator.stubs.TestCloudflareServiceFactory;
 import eu.inias.ddnsoperator.testconfig.OperatorTestConfiguration;
-import io.fabric8.kubernetes.api.model.NamespaceBuilder;
-import io.fabric8.kubernetes.api.model.ObjectMetaBuilder;
-import io.fabric8.kubernetes.api.model.Secret;
-import io.fabric8.kubernetes.api.model.SecretBuilder;
+import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.javaoperatorsdk.operator.springboot.starter.test.EnableMockOperator;
 import org.junit.jupiter.api.BeforeAll;
@@ -24,7 +25,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import java.time.Duration;
 import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
@@ -76,15 +76,64 @@ public class IntegrationTest {
     void test() {
         when(publicIpService.getPublicIp()).thenReturn("1.1.1.1");
 
-        Secret apiTokenSecret = new SecretBuilder()
-                .withNewMetadata()
-                .withName("api-token-secret")
-                .withNamespace(NAMESPACE)
-                .endMetadata()
-                .withData(Map.of("api-token", base64Encode("token!")))
-                .build();
-        client.resource(apiTokenSecret).create();
+        createApiTokenSecret();
+        createZone();
+        createRecord();
 
+        await().untilAsserted(() ->
+                assertThat(testCloudflareService.getDnsRecordByName(TEST_ZONE.id(), "test.example.com"))
+                        .isPresent()
+        );
+
+        createSite();
+        createPage();
+
+        await().untilAsserted(() -> {
+            ConfigMap configMap = client.resources(ConfigMap.class)
+                    .inNamespace(NAMESPACE)
+                    .withName("test-site")
+                    .get();
+            assertThat(configMap).isNotNull();
+            // ...
+        });
+    }
+
+    private void createPage() {
+        PageCustomResource pageResource = new PageCustomResource();
+        pageResource.setMetadata(new ObjectMetaBuilder()
+                .withNamespace(NAMESPACE)
+                .withName("test-page")
+                .build());
+        pageResource.setSpec(new PageSpec(
+                "test-site",
+                "page-path",
+                "Page Title",
+                "content"
+        ));
+        client.resource(pageResource).create();
+    }
+
+    private void createSite() {
+        SiteCustomResource siteResource = new SiteCustomResource();
+        siteResource.setMetadata(new ObjectMetaBuilder()
+                .withNamespace(NAMESPACE)
+                .withName("test-site")
+                .build());
+        siteResource.setSpec(new SiteSpec("test-record", null, null));
+        client.resource(siteResource).create();
+    }
+
+    private void createRecord() {
+        CloudflareRecordCustomResource recordResource = new CloudflareRecordCustomResource();
+        recordResource.setMetadata(new ObjectMetaBuilder()
+                .withName("test-record")
+                .withNamespace(NAMESPACE)
+                .build());
+        recordResource.setSpec(new CloudflareRecordSpec("test-zone", "test"));
+        client.resource(recordResource).create();
+    }
+
+    private void createZone() {
         CloudflareZoneCustomResource zoneResource = new CloudflareZoneCustomResource();
         zoneResource.setMetadata(new ObjectMetaBuilder()
                 .withName("test-zone")
@@ -95,19 +144,17 @@ public class IntegrationTest {
                 new SecretReference("api-token-secret", "api-token"))
         );
         client.resource(zoneResource).create();
+    }
 
-        CloudflareRecordCustomResource recordResource = new CloudflareRecordCustomResource();
-        recordResource.setMetadata(new ObjectMetaBuilder()
-                .withName("test-record")
+    private void createApiTokenSecret() {
+        Secret apiTokenSecret = new SecretBuilder()
+                .withNewMetadata()
+                .withName("api-token-secret")
                 .withNamespace(NAMESPACE)
-                .build());
-        recordResource.setSpec(new CloudflareRecordSpec("test-zone", "test"));
-        client.resource(recordResource).create();
-
-        await().pollDelay(Duration.ofSeconds(10)).atMost(Duration.ofMinutes(5)).untilAsserted(() ->
-                assertThat(testCloudflareService.getDnsRecordByName(TEST_ZONE.id(), "test.example.com"))
-                        .isPresent()
-        );
+                .endMetadata()
+                .withData(Map.of("api-token", base64Encode("token!")))
+                .build();
+        client.resource(apiTokenSecret).create();
     }
 
     private String base64Encode(String data) {
