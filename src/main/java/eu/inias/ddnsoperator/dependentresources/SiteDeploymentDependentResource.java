@@ -29,7 +29,7 @@ public class SiteDeploymentDependentResource
                 .withNewSpec()
                 .withReplicas(2)
                 .withNewSelector()
-                .addToMatchLabels("app", siteName)
+                .withMatchLabels(labels)
                 .endSelector()
                 .withNewTemplate()
                 .withNewMetadata()
