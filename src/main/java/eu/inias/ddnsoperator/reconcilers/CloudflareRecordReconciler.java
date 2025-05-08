@@ -115,14 +115,21 @@ public class CloudflareRecordReconciler
     public List<EventSource<?, CloudflareRecordCustomResource>> prepareEventSources(
             EventSourceContext<CloudflareRecordCustomResource> context
     ) {
+        // create an index to cache secondary -> primary
         String indexName = "cloudflare-record-zone";
         context.getPrimaryCache().addIndexer(indexName, p -> List.of(getIndexKey(getZoneResourceId(p))));
+
+        // the obvious direction, using spec.zoneRef
         PrimaryToSecondaryMapper<CloudflareRecordCustomResource> primaryToSecondary = p -> Set.of(getZoneResourceId(p));
+
+        // use index for the reverse direction
         SecondaryToPrimaryMapper<CloudflareZoneCustomResource> secondaryToPrimary = s -> context.getPrimaryCache()
                 .byIndex(indexName, getIndexKey(ResourceID.fromResource(s)))
                 .stream()
                 .map(ResourceID::fromResource)
                 .collect(Collectors.toSet());
+
+        // build the config
         InformerEventSourceConfiguration<CloudflareZoneCustomResource> configuration =
                 InformerEventSourceConfiguration.from(CloudflareZoneCustomResource.class, CloudflareRecordCustomResource.class)
                         .withPrimaryToSecondaryMapper(primaryToSecondary)
