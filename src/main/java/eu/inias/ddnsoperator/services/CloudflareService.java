@@ -4,7 +4,7 @@ import eu.inias.ddnsoperator.model.cloudflare.CloudflareApiRecord;
 import eu.inias.ddnsoperator.model.cloudflare.CloudflareApiResponse;
 import eu.inias.ddnsoperator.model.cloudflare.CloudflareApiZone;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpClientErrorException.NotFound;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
@@ -92,7 +92,7 @@ public class CloudflareService {
     private <R> Optional<R> wrapNotFound(Supplier<R> supplier) {
         try {
             return Optional.of(supplier.get());
-        } catch (HttpClientErrorException.NotFound e) {
+        } catch (NotFound e) {
             return Optional.empty();
         }
     }
