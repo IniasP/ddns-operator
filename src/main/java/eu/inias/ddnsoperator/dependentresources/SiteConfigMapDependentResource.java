@@ -14,7 +14,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class SiteConfigMapDependentResource extends CRUDKubernetesDependentResource<ConfigMap, SiteCustomResource> {
+public class SiteConfigMapDependentResource
+        extends CRUDKubernetesDependentResource<ConfigMap, SiteCustomResource> {
     private static final Parser PARSER = Parser.builder().build();
     private static final HtmlRenderer RENDERER = HtmlRenderer.builder().build();
 
@@ -24,7 +25,7 @@ public class SiteConfigMapDependentResource extends CRUDKubernetesDependentResou
 
     @Override
     protected ConfigMap desired(SiteCustomResource site, Context<SiteCustomResource> context) {
-        List<PageCustomResource> pages = getPageResources(site, context);
+        List<PageCustomResource> pages = getPageResources(context);
         Map<String, String> htmlFiles = new HashMap<>();
         htmlFiles.put("index.html", generateIndexHtml(pages, site.getSpec().indexTemplate()));
         for (PageCustomResource page : pages) {
@@ -40,17 +41,8 @@ public class SiteConfigMapDependentResource extends CRUDKubernetesDependentResou
                 .build();
     }
 
-    private static List<PageCustomResource> getPageResources(
-            SiteCustomResource site,
-            Context<SiteCustomResource> context
-    ) {
-        return context.getClient()
-                .resources(PageCustomResource.class)
-                .inNamespace(site.getMetadata().getNamespace())
-                .list()
-                .getItems()
-                .stream()
-                .filter(page -> site.getMetadata().getName().equals(page.getSpec().siteRef()))
+    private static List<PageCustomResource> getPageResources(Context<SiteCustomResource> context) {
+        return context.getSecondaryResourcesAsStream(PageCustomResource.class)
                 .sorted(Comparator.comparing(p -> p.getSpec().title()))
                 .toList();
     }
