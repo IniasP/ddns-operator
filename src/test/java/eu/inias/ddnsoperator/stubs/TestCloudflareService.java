@@ -62,7 +62,8 @@ public class TestCloudflareService extends CloudflareService {
                 UUID.randomUUID().toString(),
                 record.name(),
                 record.type(),
-                record.content()
+                record.content(),
+                record.proxied()
         );
         recordsByZoneId.get(zoneId).add(recordWithId);
         return recordWithId;

@@ -83,6 +83,7 @@ public class IntegrationTest {
         await().untilAsserted(() ->
                 assertThat(testCloudflareService.getDnsRecordByName(TEST_ZONE.id(), "test.example.com"))
                         .isPresent()
+                        .hasValueSatisfying(r -> assertThat(r.proxied()).isTrue())
         );
 
         createSite();
@@ -129,7 +130,7 @@ public class IntegrationTest {
                 .withName("test-record")
                 .withNamespace(NAMESPACE)
                 .build());
-        recordResource.setSpec(new CloudflareRecordSpec("test-zone", "test"));
+        recordResource.setSpec(new CloudflareRecordSpec("test-zone", "test", true));
         client.resource(recordResource).create();
     }
 

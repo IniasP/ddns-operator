@@ -69,9 +69,10 @@ public class CloudflareRecordReconciler
 
         String zoneName = cloudflareService.getZoneById(zoneId).name();
         String host = recordResource.getSpec().name() + "." + zoneName;
+        boolean proxied = recordResource.getSpec().proxied();
         CloudflareApiRecord cloudflareApiRecord = cloudflareService.getDnsRecordByName(zoneId, host)
                 .map(existingRecord -> updateRecord(existingRecord, zoneId, publicIp, cloudflareService))
-                .orElseGet(() -> createRecord(zoneId, host, publicIp, cloudflareService));
+                .orElseGet(() -> createRecord(zoneId, host, publicIp, proxied, cloudflareService));
 
         CloudflareRecordStatus status = new CloudflareRecordStatus(
                 recordResource.getMetadata().getGeneration(),
@@ -150,9 +151,11 @@ public class CloudflareRecordReconciler
             String zoneId,
             String recordName,
             String publicIp,
+            boolean proxied,
             CloudflareService cloudflareService
     ) {
-        return cloudflareService.createDnsRecord(zoneId, CloudflareApiRecord.newARecord(recordName, publicIp));
+        CloudflareApiRecord record = CloudflareApiRecord.newARecord(recordName, publicIp, proxied);
+        return cloudflareService.createDnsRecord(zoneId, record);
     }
 
     private static CloudflareApiRecord updateRecord(

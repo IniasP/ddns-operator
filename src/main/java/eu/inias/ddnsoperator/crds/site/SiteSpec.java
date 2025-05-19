@@ -1,7 +1,9 @@
 package eu.inias.ddnsoperator.crds.site;
 
+import io.fabric8.generator.annotation.Required;
+
 public record SiteSpec(
-        String cloudflareRecordRef,
+        @Required String cloudflareRecordRef,
         String indexTemplate,
         String pageTemplate
 ) {

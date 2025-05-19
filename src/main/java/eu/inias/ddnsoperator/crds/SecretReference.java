@@ -1,7 +1,9 @@
 package eu.inias.ddnsoperator.crds;
 
+import io.fabric8.generator.annotation.Required;
+
 public record SecretReference(
-        String name,
-        String key
+        @Required String name,
+        @Required String key
 ) {
 }

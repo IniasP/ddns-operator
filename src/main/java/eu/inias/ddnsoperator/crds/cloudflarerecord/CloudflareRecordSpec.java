@@ -1,7 +1,11 @@
 package eu.inias.ddnsoperator.crds.cloudflarerecord;
 
+import io.fabric8.generator.annotation.Default;
+import io.fabric8.generator.annotation.Required;
+
 public record CloudflareRecordSpec(
-        String zoneRef,
-        String name
+        @Required String zoneRef,
+        @Required String name,
+        @Default("true") boolean proxied
 ) {
 }
