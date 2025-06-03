@@ -11,7 +11,7 @@ public record CloudflareApiRecord(
         return new CloudflareApiRecord(null, name, "A", ip, proxied);
     }
 
-    public CloudflareApiRecord updated(String newContent) {
-        return new CloudflareApiRecord(id, name, "A", newContent, proxied);
+    public CloudflareApiRecord updated(String newIp, boolean proxied) {
+        return new CloudflareApiRecord(id, name, "A", newIp, proxied);
     }
 }

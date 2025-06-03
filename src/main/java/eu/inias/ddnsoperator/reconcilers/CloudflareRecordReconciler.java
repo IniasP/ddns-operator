@@ -71,7 +71,7 @@ public class CloudflareRecordReconciler
         String host = recordResource.getSpec().name() + "." + zoneName;
         boolean proxied = recordResource.getSpec().proxied();
         CloudflareApiRecord cloudflareApiRecord = cloudflareService.getDnsRecordByName(zoneId, host)
-                .map(existingRecord -> updateRecord(existingRecord, zoneId, publicIp, cloudflareService))
+                .map(existingRecord -> updateRecord(existingRecord, zoneId, publicIp, proxied, cloudflareService))
                 .orElseGet(() -> createRecord(zoneId, host, publicIp, proxied, cloudflareService));
 
         CloudflareRecordStatus status = new CloudflareRecordStatus(
@@ -160,14 +160,16 @@ public class CloudflareRecordReconciler
 
     private static CloudflareApiRecord updateRecord(
             CloudflareApiRecord existingRecord,
-            String zoneId, String publicIp,
+            String zoneId,
+            String publicIp,
+            boolean proxied,
             CloudflareService cloudflareService
     ) {
-        if (existingRecord.content().equals(publicIp)) {
-            LOGGER.info("Ip is correctly set to {} for {}. Nothing to do.", publicIp, existingRecord.name());
+        if (existingRecord.content().equals(publicIp) && existingRecord.proxied() == proxied) {
+            LOGGER.info("Record {} is up to date, nothing to do.", existingRecord.name());
             return existingRecord;
         } else {
-            return cloudflareService.updateDnsRecord(zoneId, existingRecord.updated(publicIp));
+            return cloudflareService.updateDnsRecord(zoneId, existingRecord.updated(publicIp, proxied));
         }
     }
 
