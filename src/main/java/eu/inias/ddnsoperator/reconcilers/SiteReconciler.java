@@ -47,7 +47,7 @@ import java.util.stream.Collectors;
                 dependsOn = "site-service"
         )
 })
-public class SiteReconciler implements Reconciler<SiteCustomResource> {
+public class SiteReconciler implements Reconciler<SiteCustomResource>, Cleaner<SiteCustomResource> {
     private static final Logger LOGGER = LoggerFactory.getLogger(SiteReconciler.class);
 
     @Override
@@ -98,5 +98,10 @@ public class SiteReconciler implements Reconciler<SiteCustomResource> {
 
     private static String getIndexKey(ResourceID id) {
         return id.getName() + "#" + id.getNamespace();
+    }
+
+    @Override
+    public DeleteControl cleanup(SiteCustomResource siteCustomResource, Context<SiteCustomResource> context) {
+        return DeleteControl.defaultDelete();
     }
 }
