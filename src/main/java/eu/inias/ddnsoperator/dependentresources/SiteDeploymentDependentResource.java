@@ -27,7 +27,7 @@ public class SiteDeploymentDependentResource
                 .withAnnotations(Map.of("reloader.stakater.com/auto", "true"))
                 .endMetadata()
                 .withNewSpec()
-                .withReplicas(2)
+                .withReplicas(1)
                 .withNewSelector()
                 .withMatchLabels(labels)
                 .endSelector()
