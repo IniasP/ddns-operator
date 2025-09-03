@@ -30,6 +30,7 @@ public class SiteIngressDependentResource
                 .withLabels(Map.of("app", siteName))
                 .withAnnotations(Map.of(
                         "cert-manager.io/cluster-issuer", "letsencrypt-prod",
+                        "cloudflare-ingress-guard.inias.eu/enabled", "true",
                         "kubernetes.io/ingress.class", "nginx"
                 ))
                 .endMetadata()
