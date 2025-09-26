@@ -92,7 +92,7 @@ public class CloudflareService {
     private <R> Optional<R> wrapNotFound(Supplier<R> supplier) {
         try {
             return Optional.of(supplier.get());
-        } catch (NotFound e) {
+        } catch (NotFound _) {
             return Optional.empty();
         }
     }
