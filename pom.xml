@@ -9,7 +9,7 @@
     </parent>
     <groupId>eu.inias</groupId>
     <artifactId>ddns-operator</artifactId>
-    <version>0.1.0</version>
+    <version>0.1.1-SNAPSHOT</version>
     <name>DdnsOperator</name>
     <description>DDNS Operator</description>
     <url />
@@ -24,7 +24,7 @@
     <scm>
         <connection>scm:git:https://github.com/IniasP/ddns-operator.git</connection>
         <developerConnection>scm:git:https://github.com/IniasP/ddns-operator.git</developerConnection>
-        <tag>v0.1.0</tag>
+        <tag>HEAD</tag>
         <url>https://github.com/iniasp/ddns-operator</url>
     </scm>
     <properties>
