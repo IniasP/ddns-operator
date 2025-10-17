@@ -120,6 +120,7 @@
                     <arguments>-DskipTests</arguments>
                     <pushChanges>true</pushChanges>
                     <preparationGoals>clean verify</preparationGoals>
+                    <goals>install</goals>
                     <scmCommentPrefix>[maven-release-plugin]</scmCommentPrefix>
                 </configuration>
             </plugin>
