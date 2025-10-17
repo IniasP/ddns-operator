@@ -1,0 +1,39 @@
+name: Maven Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write  # Required to push commits and tags
+  packages: write  # For potential future Maven package publishing
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history required for release plugin
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: 'maven'
+      
+      - name: Configure Git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Maven Release Prepare
+        run: |
+          mvn --batch-mode release:prepare
+      
+      - name: Maven Release Perform
+        run: |
+          mvn --batch-mode release:perform
