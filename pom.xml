@@ -36,7 +36,7 @@
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <josdk-spring-boot-starter.version>6.3.2</josdk-spring-boot-starter.version>
         <josdk.version>5.2.2</josdk.version>
-        <fabric8-client.version>7.4.0</fabric8-client.version>
+        <fabric8-client.version>7.5.0</fabric8-client.version>
     </properties>
 
     <dependencyManagement>
@@ -90,6 +90,18 @@
             <groupId>io.javaoperatorsdk</groupId>
             <artifactId>operator-framework-junit-5</artifactId>
             <version>${josdk.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>${junit-jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>${junit-jupiter.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
