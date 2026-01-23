@@ -93,5 +93,5 @@ jobs:
           TAG="v${{ steps.calculate_version.outputs.release_version }}"
           
           gh release create "$TAG" \
-            --title "Release $TAG" \
+            --title "$TAG" \
             --generate-notes
