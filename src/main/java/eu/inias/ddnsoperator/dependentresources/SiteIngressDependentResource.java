@@ -2,6 +2,7 @@ package eu.inias.ddnsoperator.dependentresources;
 
 import eu.inias.ddnsoperator.crds.cloudflarerecord.CloudflareRecordCustomResource;
 import eu.inias.ddnsoperator.crds.site.SiteCustomResource;
+import eu.inias.ddnsoperator.crds.site.SiteSpec;
 import io.fabric8.kubernetes.api.model.networking.v1.*;
 import io.javaoperatorsdk.operator.api.reconciler.Context;
 import io.javaoperatorsdk.operator.processing.dependent.kubernetes.CRUDKubernetesDependentResource;
@@ -22,20 +23,20 @@ public class SiteIngressDependentResource
     }
 
     private static Ingress ingress(SiteCustomResource site, CloudflareRecordCustomResource cloudflareRecord) {
+        SiteSpec.IngressSpec ingressSpec = site.getSpec().ingress();
+        if (ingressSpec == null || !ingressSpec.enabled()) {
+            return null;
+        }
         String siteName = site.getMetadata().getName();
         return new IngressBuilder()
                 .withNewMetadata()
                 .withName(siteName)
                 .withNamespace(site.getMetadata().getNamespace())
                 .withLabels(Map.of("app", siteName))
-                .withAnnotations(Map.of(
-                        "cert-manager.io/cluster-issuer", "letsencrypt-prod",
-                        "cloudflare-ingress-guard.inias.eu/enabled", "true",
-                        "kubernetes.io/ingress.class", "nginx"
-                ))
+                .withAnnotations(ingressSpec.annotations())
                 .endMetadata()
                 .withNewSpec()
-                .withIngressClassName("nginx")
+                .withIngressClassName(ingressSpec.ingressClassName())
                 .withTls(tls(cloudflareRecord.getStatus().host(), siteName + "-tls"))
                 .withRules(ingressRule(cloudflareRecord, siteName))
                 .endSpec()
