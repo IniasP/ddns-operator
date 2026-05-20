@@ -4,8 +4,10 @@ import eu.inias.ddnsoperator.crds.cloudflarerecord.CloudflareRecordCustomResourc
 import eu.inias.ddnsoperator.crds.ObservedGenerationStatus;
 import eu.inias.ddnsoperator.crds.page.PageCustomResource;
 import eu.inias.ddnsoperator.crds.site.SiteCustomResource;
+import eu.inias.ddnsoperator.dependentresources.SiteCertificateDependentResource;
 import eu.inias.ddnsoperator.dependentresources.SiteConfigMapDependentResource;
 import eu.inias.ddnsoperator.dependentresources.SiteDeploymentDependentResource;
+import eu.inias.ddnsoperator.dependentresources.SiteHttpRouteDependentResource;
 import eu.inias.ddnsoperator.dependentresources.SiteIngressDependentResource;
 import eu.inias.ddnsoperator.dependentresources.SiteServiceDependentResource;
 import io.javaoperatorsdk.operator.api.config.informer.InformerEventSourceConfiguration;
@@ -45,6 +47,15 @@ import java.util.stream.Collectors;
                 name = "site-ingress",
                 type = SiteIngressDependentResource.class,
                 dependsOn = "site-service"
+        ),
+        @Dependent(
+                name = "site-httproute",
+                type = SiteHttpRouteDependentResource.class,
+                dependsOn = "site-service"
+        ),
+        @Dependent(
+                name = "site-certificate",
+                type = SiteCertificateDependentResource.class
         )
 })
 public class SiteReconciler implements Reconciler<SiteCustomResource>, Cleaner<SiteCustomResource> {

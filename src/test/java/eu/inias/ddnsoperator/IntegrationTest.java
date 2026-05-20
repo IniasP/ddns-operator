@@ -120,7 +120,7 @@ public class IntegrationTest {
                 .withNamespace(NAMESPACE)
                 .withName("test-site")
                 .build());
-        siteResource.setSpec(new SiteSpec("test-record", null, null));
+        siteResource.setSpec(new SiteSpec("test-record", null, null, null, null));
         client.resource(siteResource).create();
     }
 
