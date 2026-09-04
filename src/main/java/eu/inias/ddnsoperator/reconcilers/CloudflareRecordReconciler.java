@@ -136,7 +136,7 @@ public class CloudflareRecordReconciler
                         .withPrimaryToSecondaryMapper(primaryToSecondary)
                         .withSecondaryToPrimaryMapper(secondaryToPrimary)
                         .build();
-        return List.of(new InformerEventSource<>(configuration, context));
+        return List.of(new InformerEventSource<>(configuration));
     }
 
     private CloudflareService getCloudflareService(

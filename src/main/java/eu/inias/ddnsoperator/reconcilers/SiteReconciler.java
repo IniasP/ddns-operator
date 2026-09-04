@@ -70,11 +70,10 @@ public class SiteReconciler implements Reconciler<SiteCustomResource>, Cleaner<S
 
     @Override
     public List<EventSource<?, SiteCustomResource>> prepareEventSources(EventSourceContext<SiteCustomResource> context) {
-        return List.of(getCloudflareRecordEventSource(context), getPageEventSource(context));
+        return List.of(getCloudflareRecordEventSource(context), getPageEventSource());
     }
 
-    private static InformerEventSource<PageCustomResource, SiteCustomResource>
-    getPageEventSource(EventSourceContext<SiteCustomResource> context) {
+    private static InformerEventSource<PageCustomResource, SiteCustomResource> getPageEventSource() {
         SecondaryToPrimaryMapper<PageCustomResource> secondaryToPrimary = page -> Set.of(
                 new ResourceID(page.getSpec().siteRef(), page.getMetadata().getNamespace())
         );
@@ -82,7 +81,7 @@ public class SiteReconciler implements Reconciler<SiteCustomResource>, Cleaner<S
                 InformerEventSourceConfiguration.from(PageCustomResource.class, SiteCustomResource.class)
                         .withSecondaryToPrimaryMapper(secondaryToPrimary)
                         .build();
-        return new InformerEventSource<>(configuration, context);
+        return new InformerEventSource<>(configuration);
     }
 
     private static InformerEventSource<CloudflareRecordCustomResource, SiteCustomResource>
@@ -100,7 +99,7 @@ public class SiteReconciler implements Reconciler<SiteCustomResource>, Cleaner<S
                         .withPrimaryToSecondaryMapper(primaryToSecondary)
                         .withSecondaryToPrimaryMapper(secondaryToPrimary)
                         .build();
-        return new InformerEventSource<>(configuration, context);
+        return new InformerEventSource<>(configuration);
     }
 
     private static ResourceID getCloudflareRecordResourceId(SiteCustomResource siteResource) {
