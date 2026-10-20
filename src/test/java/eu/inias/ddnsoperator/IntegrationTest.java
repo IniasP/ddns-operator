@@ -1,6 +1,7 @@
 package eu.inias.ddnsoperator;
 
 import eu.inias.ddnsoperator.crds.SecretReference;
+import eu.inias.ddnsoperator.crds.certmanager.CertificateCustomResource;
 import eu.inias.ddnsoperator.crds.cloudflarerecord.CloudflareRecordCustomResource;
 import eu.inias.ddnsoperator.crds.cloudflarerecord.CloudflareRecordSpec;
 import eu.inias.ddnsoperator.crds.cloudflarezone.CloudflareZoneCustomResource;
@@ -16,6 +17,7 @@ import eu.inias.ddnsoperator.stubs.TestCloudflareServiceFactory;
 import eu.inias.ddnsoperator.testconfig.OperatorTestConfiguration;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.dsl.NonDeletingOperation;
 import io.javaoperatorsdk.operator.springboot.starter.test.EnableMockOperator;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,6 +42,7 @@ import static org.mockito.Mockito.when;
         "classpath:META-INF/fabric8/cloudflarezones.ddns.inias.eu-v1.yml",
         "classpath:META-INF/fabric8/pages.ddns.inias.eu-v1.yml",
         "classpath:META-INF/fabric8/sites.ddns.inias.eu-v1.yml",
+        "classpath:crds/certificates.cert-manager.io-v1.yml",
 })
 @Import(OperatorTestConfiguration.class)
 public class IntegrationTest {
@@ -99,6 +102,49 @@ public class IntegrationTest {
         });
     }
 
+    @Test
+    void createsCertificateInGatewayNamespaceWithoutOwnerReference() {
+        when(publicIpService.getPublicIp()).thenReturn("1.1.1.1");
+
+        createApiTokenSecret();
+        createZone();
+        createRecord();
+
+        await().untilAsserted(() ->
+                assertThat(testCloudflareService.getDnsRecordByName(TEST_ZONE.id(), "test.example.com")).isPresent()
+        );
+
+        SiteCustomResource siteResource = new SiteCustomResource();
+        siteResource.setMetadata(new ObjectMetaBuilder()
+                .withNamespace(NAMESPACE)
+                .withName("cert-site")
+                .build());
+        siteResource.setSpec(new SiteSpec(
+                "test-record",
+                null,
+                null,
+                null,
+                new SiteSpec.HttpRouteSpec(
+                        true,
+                        "main-gateway",
+                        "gateway-namespace",
+                        "https",
+                        new SiteSpec.CertIssuerRef("letsencrypt-prod", null, null),
+                        null
+                )
+        ));
+        client.resource(siteResource).create();
+
+        await().untilAsserted(() -> {
+            CertificateCustomResource certificate = client.resources(CertificateCustomResource.class)
+                    .inNamespace("gateway-namespace")
+                    .withName("cert-site-tls")
+                    .get();
+            assertThat(certificate).isNotNull();
+            assertThat(certificate.getMetadata().getOwnerReferences()).isEmpty();
+        });
+    }
+
     private void createPage() {
         PageCustomResource pageResource = new PageCustomResource();
         pageResource.setMetadata(new ObjectMetaBuilder()
@@ -131,7 +177,7 @@ public class IntegrationTest {
                 .withNamespace(NAMESPACE)
                 .build());
         recordResource.setSpec(new CloudflareRecordSpec("test-zone", "test", true));
-        client.resource(recordResource).create();
+        client.resource(recordResource).createOr(NonDeletingOperation::update);
     }
 
     private void createZone() {
@@ -144,7 +190,7 @@ public class IntegrationTest {
                 "example.com",
                 new SecretReference("api-token-secret", "api-token"))
         );
-        client.resource(zoneResource).create();
+        client.resource(zoneResource).createOr(NonDeletingOperation::update);
     }
 
     private void createApiTokenSecret() {
@@ -155,7 +201,7 @@ public class IntegrationTest {
                 .endMetadata()
                 .withData(Map.of("api-token", base64Encode("token!")))
                 .build();
-        client.resource(apiTokenSecret).create();
+        client.resource(apiTokenSecret).createOr(NonDeletingOperation::update);
     }
 
     private String base64Encode(String data) {

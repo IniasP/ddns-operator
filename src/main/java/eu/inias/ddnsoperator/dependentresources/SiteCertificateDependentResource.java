@@ -6,7 +6,10 @@ import eu.inias.ddnsoperator.crds.cloudflarerecord.CloudflareRecordCustomResourc
 import eu.inias.ddnsoperator.crds.site.SiteCustomResource;
 import eu.inias.ddnsoperator.crds.site.SiteSpec;
 import io.javaoperatorsdk.operator.api.reconciler.Context;
-import io.javaoperatorsdk.operator.processing.dependent.kubernetes.CRUDKubernetesDependentResource;
+import io.javaoperatorsdk.operator.api.reconciler.dependent.Deleter;
+import io.javaoperatorsdk.operator.processing.dependent.Creator;
+import io.javaoperatorsdk.operator.processing.dependent.Updater;
+import io.javaoperatorsdk.operator.processing.dependent.kubernetes.KubernetesDependentResource;
 
 import java.util.List;
 import java.util.Map;
@@ -19,9 +22,16 @@ import java.util.Map;
  * The Certificate is only created when {@code httpRoute.certIssuerRef} is set.
  * The secret is created in {@code httpRoute.gatewayNamespace} (defaulting to the
  * Site's own namespace if not set), matching where the Gateway listener reads it from.
+ *
+ * Deliberately not a {@code CRUDKubernetesDependentResource}: that is garbage-collected, so JOSDK
+ * would add an owner reference to the Site, which Kubernetes forbids across namespaces.
+ * Without it, JOSDK maps events back via annotations and deletes the Certificate on cleanup.
  */
 public class SiteCertificateDependentResource
-        extends CRUDKubernetesDependentResource<CertificateCustomResource, SiteCustomResource> {
+        extends KubernetesDependentResource<CertificateCustomResource, SiteCustomResource>
+        implements Creator<CertificateCustomResource, SiteCustomResource>,
+        Updater<CertificateCustomResource, SiteCustomResource>,
+        Deleter<SiteCustomResource> {
 
     public SiteCertificateDependentResource() {
         super(CertificateCustomResource.class);
