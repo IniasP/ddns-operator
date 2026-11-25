@@ -12,7 +12,8 @@
         "io.javaoperatorsdk:**",
         "io.fabric8:**"
       ],
-      "groupName": "JOSDK / fabric8 / Spring Boot"
+      "groupName": "JOSDK / fabric8 / Spring Boot",
+      "separateMajorMinor": false
     }
   ],
   "customManagers": [
