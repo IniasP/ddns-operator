@@ -6,6 +6,9 @@ import eu.inias.ddnsoperator.crds.cloudflarerecord.CloudflareRecordCustomResourc
 import eu.inias.ddnsoperator.crds.site.SiteCustomResource;
 import eu.inias.ddnsoperator.crds.site.SiteSpec;
 import io.javaoperatorsdk.operator.api.reconciler.Context;
+import io.javaoperatorsdk.operator.api.reconciler.EventSourceContext;
+import io.javaoperatorsdk.operator.api.config.informer.InformerEventSourceConfiguration;
+import io.javaoperatorsdk.operator.processing.event.ResourceID;
 import io.javaoperatorsdk.operator.api.reconciler.dependent.Deleter;
 import io.javaoperatorsdk.operator.processing.dependent.Creator;
 import io.javaoperatorsdk.operator.processing.dependent.Updater;
@@ -13,6 +16,7 @@ import io.javaoperatorsdk.operator.processing.dependent.kubernetes.KubernetesDep
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Creates a cert-manager Certificate resource in the Gateway's namespace so that
@@ -37,6 +41,31 @@ public class SiteCertificateDependentResource
         super(CertificateCustomResource.class);
     }
 
+    /**
+     * Look the Certificate up by name instead of through the annotation index. The index only knows
+     * Certificates that carry this operator's primary-name annotations, so an existing Certificate
+     * without them (e.g. created before the annotations, or by hand) would look absent: JOSDK would
+     * try to create it again and the API server would answer 409 Conflict on every reconcile.
+     */
+    @Override
+    protected InformerEventSourceConfiguration.Builder<CertificateCustomResource> informerConfigurationBuilder(
+            EventSourceContext<SiteCustomResource> context) {
+        return super.informerConfigurationBuilder(context)
+                .withPrimaryToSecondaryMapper((SiteCustomResource site) ->
+                        Set.of(new ResourceID(secretName(site), certificateNamespace(site))));
+    }
+
+    private static String secretName(SiteCustomResource site) {
+        return site.getMetadata().getName() + "-tls";
+    }
+
+    private static String certificateNamespace(SiteCustomResource site) {
+        SiteSpec.HttpRouteSpec httpRoute = site.getSpec().httpRoute();
+        return httpRoute != null && httpRoute.gatewayNamespace() != null
+                ? httpRoute.gatewayNamespace()
+                : site.getMetadata().getNamespace();
+    }
+
     @Override
     protected CertificateCustomResource desired(SiteCustomResource site, Context<SiteCustomResource> context) {
         return context.getSecondaryResource(CloudflareRecordCustomResource.class)
@@ -53,13 +82,11 @@ public class SiteCertificateDependentResource
         SiteSpec.CertIssuerRef certIssuerRef = httpRouteSpec.certIssuerRef();
         String siteName = site.getMetadata().getName();
         String hostname = cloudflareRecord.getStatus().host();
-        String secretName = siteName + "-tls";
+        String secretName = secretName(site);
 
         // The Certificate must live in the same namespace as the Gateway,
         // because that is where the Gateway reads TLS secrets from.
-        String certNamespace = httpRouteSpec.gatewayNamespace() != null
-                ? httpRouteSpec.gatewayNamespace()
-                : site.getMetadata().getNamespace();
+        String certNamespace = certificateNamespace(site);
 
         CertificateCustomResource certificate = new CertificateCustomResource();
         certificate.getMetadata().setName(secretName);

@@ -2,6 +2,7 @@ package eu.inias.ddnsoperator;
 
 import eu.inias.ddnsoperator.crds.SecretReference;
 import eu.inias.ddnsoperator.crds.certmanager.CertificateCustomResource;
+import eu.inias.ddnsoperator.crds.certmanager.CertificateSpec;
 import eu.inias.ddnsoperator.crds.cloudflarerecord.CloudflareRecordCustomResource;
 import eu.inias.ddnsoperator.crds.cloudflarerecord.CloudflareRecordSpec;
 import eu.inias.ddnsoperator.crds.cloudflarezone.CloudflareZoneCustomResource;
@@ -27,7 +28,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import java.time.Duration;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -142,6 +145,35 @@ public class IntegrationTest {
                     .get();
             assertThat(certificate).isNotNull();
             assertThat(certificate.getMetadata().getOwnerReferences()).isEmpty();
+        });
+    }
+
+    @Test
+    void adoptsPreExistingCertificateWithoutOperatorAnnotations() {
+        when(publicIpService.getPublicIp()).thenReturn("1.1.1.1");
+        createApiTokenSecret();
+        createZone();
+        createRecord();
+        await().untilAsserted(() ->
+                assertThat(testCloudflareService.getDnsRecordByName(TEST_ZONE.id(), "test.example.com")).isPresent());
+
+        CertificateCustomResource existing = new CertificateCustomResource();
+        existing.setMetadata(new ObjectMetaBuilder().withNamespace("gateway-namespace").withName("adopt-site-tls").build());
+        existing.setSpec(new CertificateSpec("adopt-site-tls", List.of("old.example.com"),
+                new CertificateSpec.IssuerRef("letsencrypt-prod", "ClusterIssuer", "cert-manager.io")));
+        client.resource(existing).create();
+
+        SiteCustomResource siteResource = new SiteCustomResource();
+        siteResource.setMetadata(new ObjectMetaBuilder().withNamespace(NAMESPACE).withName("adopt-site").build());
+        siteResource.setSpec(new SiteSpec("test-record", null, null, null,
+                new SiteSpec.HttpRouteSpec(true, "main-gateway", "gateway-namespace", "https",
+                        new SiteSpec.CertIssuerRef("letsencrypt-prod", null, null), null)));
+        client.resource(siteResource).create();
+
+        await().atMost(Duration.ofSeconds(20)).untilAsserted(() -> {
+            CertificateCustomResource c = client.resources(CertificateCustomResource.class)
+                    .inNamespace("gateway-namespace").withName("adopt-site-tls").get();
+            assertThat(c.getSpec().dnsNames()).containsExactly("test.example.com");
         });
     }
 
